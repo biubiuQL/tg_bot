@@ -1,8 +1,8 @@
 import re
 import logging
 import stripe
-from telegram import Update, LabeledPrice, ReplyKeyboardMarkup, ShippingOption, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultPhoto
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, PreCheckoutQueryHandler, InlineQueryHandler
+from telegram import Update, LabeledPrice, ReplyKeyboardMarkup, ShippingOption, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultPhoto, InlineKeyboardMarkup, InlineKeyboardButton, InputInvoiceMessageContent
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, PreCheckoutQueryHandler, InlineQueryHandler, CallbackQueryHandler
 
 
 # 配置 Stripe 密钥
@@ -96,45 +96,70 @@ async def inline_query(update: Update, context: CallbackContext) -> None:
             #     thumbnail_url='https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png',  # 可选
             #     description='帮助信息'
             # ),
-            InlineQueryResultArticle(
-            id="3",  # 唯一ID
-            title="点击生成发票",
-            input_message_content=InputTextMessageContent('请点击生成支付发票。')
-            )
-            # 返回图片结果
-            # InlineQueryResultPhoto(
-            #     id='1',
-            #     photo_url='https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png',  # 你的图片 URL
-            #     thumbnail_url='https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png',  # 缩略图 URL
-            #     title='示例图片',
-            #     description='这是一个图片的例子',
-            #     caption='这是图片的说明'
+            # InlineQueryResultArticle(
+            #     id="3",  # 唯一ID
+            #     title="点击生成发票",
+            #     input_message_content=InputTextMessageContent(
+            #         '点击下方按钮以生成支付发票。'),
+            #     reply_markup=InlineKeyboardMarkup(
+            #         [[InlineKeyboardButton(
+            #             text="生成发票", callback_data='generate_invoice')]]
+            #     )
             # )
+            # 内联支付
+            InlineQueryResultArticle(
+                id="invoice_1",
+                title="生成支付发票",
+                thumbnail_url='https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png',
+                # 返回内联发票
+                input_message_content=InputInvoiceMessageContent(
+                    title="支付商品",
+                    description="这是一个测试发票",
+                    payload="custom_payload",
+                    provider_token=PAYMENT_PROVIDER_TOKEN,
+                    currency="USD",
+                    prices=[{"label": "商品", "amount": 1000}]  # 金额以最小货币单位表示
+                ),
+                # reply_markup=InlineKeyboardMarkup(
+                #     [[InlineKeyboardButton(
+                #         text="生成发票", callback_data='generate_invoice')]]
+                # )
+            )
         )
     await context.bot.answer_inline_query(update.inline_query.id, results)
 
+# 处理回调按钮点击
 
-async def custom_message_handler(update: Update, context: CallbackContext) -> None:
-    print("hao hao")
-    message_text = update.message.text
-    # 定义正则表达式模式
-    pattern = '生成订单成功'
-    # 使用正则表达式匹配消息内容
-    if re.search(pattern, message_text):
+
+async def button_callback(update: Update, context: CallbackContext) -> None:
+    query = update.callback_query
+    query.from_user.id
+    # 发送发票
+    if query.data == 'generate_invoice':
         await request_invoice(update, context)
-
+        await query.answer()  # 确认按钮点击
 
 # 处理消息并应用正则表达式过滤器
+
+
 async def handle_message(update: Update, context: CallbackContext) -> None:
-    message_text = update.message.text
-    print(1111111)
-    # 检查消息是否符合正则表达式
-    if regex_filter(message_text, r'生成支付发票'):
-        await request_invoice(update, context)
+    print(5555555)
+    try:
+        message_text = update.message.text
+        print(message_text)
+        # 检查消息是否符合正则表达式
+        if regex_filter(message_text, r'生成支付发票'):
+            print(6666666)
+            await request_invoice(update, context)
+    except Exception as e:
+        await update.message.reply_text("处理消息时发生错误，请稍后再试。")
 
 # 自定义的正则表达式过滤器
-def regex_filter(pattern):
-    return lambda message: re.search(pattern, message.text) is not None
+
+
+def regex_filter(message_text, pattern):
+    return re.search(pattern, message_text) is not None
+
 
 def main() -> None:
     # 创建 Application 对象
@@ -145,9 +170,10 @@ def main() -> None:
     application.add_handler(CommandHandler('pay', request_invoice))
     # application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, request_invoice))
     # application.add_handler(MessageHandler(filters.TEXT, custom_message_handler))
-
+    application.add_handler(CallbackQueryHandler(button_callback))
     # 处理所有文本消息，并在消息处理函数中应用正则表达式过滤器
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    application.add_handler(MessageHandler(
+        filters.TEXT & ~filters.COMMAND, handle_message))
 
     application.add_handler(PreCheckoutQueryHandler(pre_checkout_query))
     application.add_handler(MessageHandler(
