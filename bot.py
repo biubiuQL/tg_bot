@@ -3,7 +3,7 @@ import logging
 import stripe
 from telegram import Update, LabeledPrice, ReplyKeyboardMarkup, ShippingOption, InlineQueryResultArticle, InputTextMessageContent, InlineQueryResultPhoto, InlineKeyboardMarkup, InlineKeyboardButton, InputInvoiceMessageContent
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext, PreCheckoutQueryHandler, InlineQueryHandler, CallbackQueryHandler
-
+import uuid
 
 # 配置 Stripe 密钥
 stripe.api_key = 'sk_test_51PsKOHJcBlvi9WwwJqNK5L9GWvXfVDHw0IrBmx7FVB9FzOJ36PXZ8G90wnN3p3tujdyuQxMQ1XmNM1qZCoVBLSBQ00aGHysn6o'
@@ -31,6 +31,7 @@ async def request_invoice(update: Update, context: CallbackContext) -> None:
             provider_token=PAYMENT_PROVIDER_TOKEN,  # 支付提供者令牌
             currency='USD',  # 货币
             prices=[LabeledPrice(label='Test Product', amount=1000)],  # 商品项
+            photo_url="https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png",
             start_parameter='test-payment',  # 支付参数
             need_name=False,  # 是否需要客户姓名
             need_phone_number=False,  # 是否需要客户电话
@@ -115,8 +116,13 @@ async def inline_query(update: Update, context: CallbackContext) -> None:
                 input_message_content=InputInvoiceMessageContent(
                     title="支付商品",
                     description="这是一个测试发票",
-                    payload="custom_payload",
+                    payload=str(uuid.uuid4()),
                     provider_token=PAYMENT_PROVIDER_TOKEN,
+                    photo_url="https://space.yygogogo.com//storage/product/20240911/9a/bac2338f5fec5260c58a703ac5766126baf02d.png",
+                    photo_size=500,
+                    # photo_size=128,
+                    # photo_width=128,
+                    # photo_height=128,
                     currency="USD",
                     prices=[{"label": "商品", "amount": 1000}]  # 金额以最小货币单位表示
                 ),
